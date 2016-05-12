@@ -1,0 +1,152 @@
+grammar jp.toppers.tecs.Cdl with org.eclipse.xtext.common.Terminals hidden(WS)
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+generate cdl "http://www.toppers.jp/tecs/Cdl"
+
+Model:
+	greetings+=Expression*;
+
+BasicExpression returns Expr: Identifier | Boolean | Integer | Float | StringList | '(' Expression ')';
+Identifier: value=ID;
+Boolean: value=(KW_TRUE|KW_FALSE);
+Integer: value=(INT|HEX_CONSTANT|OCTAL_CONSTANT);
+Float: value=FLOATING_CONSTANT;
+StringList: value=STRING;
+
+SuffixExpression returns Expr: BasicExpression (
+ ({ArrayRef.struct=current} '[' index=Expression ']') |
+ ({StructMemberRef.structId=current} refOp=StructRefEnum memberId=Identifier))*;
+
+MonoWithCastExpression returns Expr: monoOp=MonoOpEnum expression=CastExpression;
+SizeOfExpression returns Expr: 'sizeof' expression=MonoExpression;
+MonoExpression returns Expr: SuffixExpression | MonoWithCastExpression | SizeOfExpression;
+
+CastExpression returns Expr: ('(' type += Identifier ')')* right=MonoExpression;
+
+MulDivExpression returns Expr: CastExpression =>({MulDivExpression.left = current} op=('*'|'/'|'%') right=CastExpression)*;
+AddSubExpression returns Expr: MulDivExpression =>({AddSubExpresssion.left = current} addSubOp=AddSubOpEnum right=MulDivExpression)*;
+ShiftExpression returns Expr: CastExpression ({ShiftExpression.left = current} op=SHIFT_OPERATOR right=AddSubExpression)*;
+LtGtExpression returns Expr: ShiftExpression ({LtGtExpression.left = current} op=LTGT_OPERATOR right=ShiftExpression)*;
+EqNeExpression returns Expr: LtGtExpression ({EqNeExpression.left = current} op=EQNE_OPERATOR right=LtGtExpression)*;
+AndExpression returns Expr: EqNeExpression =>({AndExpression.left = current} '&' right=EqNeExpression)*;
+ExorExpression returns Expr: AndExpression ({ExorExpression.left = current} '^' right=AndExpression)*;
+OrExpression returns Expr: ExorExpression ({OrExpression.left = current} '|' right=ExorExpression)*;
+LAndExpression returns Expr: OrExpression ({LAndExpression.left = current} '&&' right=OrExpression)*;
+LOrExpression returns Expr: LAndExpression ({LOrExpression.left = current} '||' right=LAndExpression)*;
+CondExpression returns Expr: LOrExpression ({CondExpression.left =current} '?' ifTrue = Expression ':' ifFalse =CondExpression)*;
+Expression returns Expr: CondExpression;
+//ConstantExpression returns Expr: CondExpression ({Expression.expression = current})*;
+
+enum StructRefEnum: DOT='.' | PTR='->';
+enum MonoOpEnum: FROM_PTR='*' | TO_PTR='&' | ABS='+' | MINUS='-' | BITWISE='~' | NOT='!';
+enum AddSubOpEnum: ADD='+' | SUB='-';
+terminal SHIFT_OPERATOR: '<<'|'>>';
+terminal LTGT_OPERATOR: '<'|'>'|'<='|'>=';
+terminal EQNE_OPERATOR: '=='|'!=';
+
+/*
+terminal KW_ATTR: 'attr';
+terminal KW_BOOL_T: 'bool_t';
+terminal KW_C_EXP: 'C_EXP';
+terminal KW_CALL: 'call';
+terminal KW_CELL: 'cell';
+terminal KW_CELLTYPE: 'celltype';
+terminal KW_CHAR: 'char';
+terminal KW_CHAR_T: 'char_t';
+terminal KW_COMPOSITE: 'composite';
+terminal KW_CONST: 'const';
+terminal KW_DESCRIPTOR: 'Descriptor';
+terminal KW_DOUBLE64_T: 'double64_t';
+terminal KW_ENTRY: 'entry';
+terminal KW_ENUM: 'enum';
+terminal KW_ENUM16: 'enum16';
+terminal KW_ENUM32: 'enum32';
+terminal KW_ENUM64: 'enum64';
+terminal KW_ENUM8: 'enum8';
+terminal KW_FACTORY_L: 'factory';
+terminal KW_FACTROY_U: 'FACTORY';
+*/
+terminal KW_FALSE: 'false';
+/*
+ * terminal KW_FLOAT32_T: 'float32_t';
+terminal KW_GENERATE: 'generate';
+terminal KW_IMPORT: 'import';
+terminal KW_IMPORT_C: 'import_C';
+terminal KW_INT: 'int';
+terminal KW_INT128_T: 'int128_t';
+terminal KW_INT16_T: 'int16_t';
+terminal KW_INT32_T: 'int32_t';
+terminal KW_INT64_T: 'int64_t';
+terminal KW_INT8_T: 'int8_t';
+terminal KW_LONG: 'long';
+terminal KW_NAMESPACE: 'namespace';
+terminal KW_REGION: 'region';
+terminal KW_REQUIRE: 'require';
+terminal KW_SCHAR_T: 'schar_t';
+terminal KW_SHORT: 'short';
+terminal KW_SIGNATURE: 'signature';
+terminal KW_SIGNED: 'signed';
+terminal KW_STRUCT: 'struct';
+*/
+terminal KW_TRUE: 'true';
+/*
+terminal KW_TYPEDEF: 'typedef';
+terminal KW_UCHAR_T: 'uchar_t';
+terminal KW_UINT128_T: 'uint128_t';
+terminal KW_UINT16_T: 'uint16_t';
+terminal KW_UINT32_T: 'uint32_t';
+terminal KW_UINT64_T: 'uint64_t';
+terminal KW_UINT8_T: 'uint8_t';
+terminal KW_UNSIGNED: 'unsigned';
+terminal KW_VAR: 'var';
+terminal KW_VOID: 'void';
+terminal KW_VOLATILE: 'volatile';
+
+terminal SP_ACTIVE: 'active';
+terminal SP_ALLOCATOR: 'allocator';
+terminal SP_CHOICE: 'choice';
+terminal SP_CLASS: 'class';
+terminal SP_CONTEXT: 'context';
+terminal SP_COUNT_IS: 'count_is';
+terminal SP_DEVIATE: 'deviate';
+terminal SP_DOMAIN: 'domain';
+terminal SP_DYNAMIC: 'dynamic';
+terminal SP_ID: 'id';
+terminal SP_IDX_IS_ID: 'idx_is_id';
+terminal SP_IN: 'in';
+terminal SP_IN_THROUGH: 'in_through';
+terminal SP_INLINE: 'inline';
+terminal SP_INOUT: 'inout';
+terminal SP_LINKUNIT: 'linkunit';
+terminal SP_NODE: 'node';
+terminal SP_NULLABLE: 'nullable';
+terminal SP_OMIT: 'omit';
+terminal SP_ONEWAY: 'oneway';
+terminal SP_OPTIONAL: 'optional';
+terminal SP_OUT: 'out';
+terminal SP_OUT_THROUGH: 'out_through';
+terminal SP_PROTOTYPE: 'prototype';
+terminal SP_RECEIVE: 'receive';
+terminal SP_REF_DESC: 'ref_desc';
+terminal SP_SEND: 'send';
+terminal SP_SINGLETON: 'singleton';
+terminal SP_SIZE_IS: 'size_is';
+terminal SP_STRING: 'string';
+terminal SP_THROUGH: 'through';
+terminal SP_TO_THROUGH: 'to_through';
+
+*/
+
+terminal ID: ('a'..'z'|'A'..'Z'|'_')('0'..'9'|'a'..'z'|'A'..'Z'|'_')*;
+
+terminal fragment BASIC_STRING_LITERAL: '"' (!'\\'|'\\\n'|'\\"')* '"';
+
+terminal HEX_CONSTANT returns ecore::EInt: '0x'('0'..'9'|'a'..'f'|'A'..'F')+;
+terminal OCTAL_CONSTANT returns ecore::EInt: '0'('0'..'7')+;
+terminal INT returns ecore::EInt: ('1'..'9')('0'..'9')*|'0';
+terminal FLOATING_CONSTANT returns ecore::EDouble: ('1'..'9')('0'..'9')* '.' ('0'..'9')* (('e'|'E')('+'|'-')?('0'..'9')+)?;
+terminal STRING returns ecore::EString: BASIC_STRING_LITERAL ((WS)* BASIC_STRING_LITERAL)*;
+terminal AB_STRING_LITERAL returns ecore::EString: '<' ('a'..'z'|'A'..'Z'|'_'|','|' ')+ '>';
+terminal CHARACTER_LITERAL returns ecore::EChar: "'" (!"'"| '\\' .) "'";
+
+terminal ANY_OTHER: .;
