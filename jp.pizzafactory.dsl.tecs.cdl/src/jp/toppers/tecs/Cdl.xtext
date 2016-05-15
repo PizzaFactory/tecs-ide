@@ -4,13 +4,63 @@ import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 generate cdl "http://www.toppers.jp/tecs/Cdl"
 
 Model:
-	greetings+=Expression*;
+	statements+=Part*;
 
+Part: Intro | Signature;
+
+Intro: value=(Import_C | Import | Typedef | Struct | /* Enum | */ Const) ';';
+
+Import_C: KW_IMPORT_C '(' filePath=StringList ')';
+Import: KW_IMPORT '(' filePath=(StringList) ')';
+Typedef: KW_TYPEDEF originType=Identifier definedType=Identifier;
+Struct: KW_STRUCT tag=Identifier '{' (members += StructMember)* '}';
+StructMember: type=Identifier name=Identifier ';';
+Const: KW_CONST type=Identifier name=Identifier '=' value = Expression;
+
+Signature: SignatureDef |SignatureGen;
+SignatureDef: (spec = SignatureSpecifier)? KW_SIGNATURE name=Identifier '{' (functions += SignatureFunction)* '}';
+SignatureSpecifier: '[' (callback ?= 'callback' | SP_CONTEXT '(' context=SignatureContextEnum ')' | deviate ?= SP_DEVIATE);
+enum SignatureContextEnum: TASK="task" | NON_TASK="non-task" | ANY="any";
+
+SignatureFunction: (spec = SignatureFunctionSpecifier)? returnType=Identifier name=Identifier '(' args += SignatureFunctionArgument (',' args += SignatureFunctionArgument)* ')';
+SignatureFunctionSpecifier: '[' oneway ?= SP_ONEWAY ']';
+
+SignatureFunctionArgument: (specs += SignatureFunctionArgumentSpecifier (',' (specs += SignatureFunctionArgumentSpecifier)*))?  type=Identifier name=Identifier;
+SignatureFunctionArgumentSpecifier: (in ?= SP_IN | out ?= SP_OUT | inout ?= SP_INOUT | SP_SEND '(' sender=Identifier ')' | SP_RECEIVE '(' receiver=Identifier ')') & (SP_SIZE_IS '(' size=Expression ')') & (SP_COUNT_IS '(' count=Expression ')') & SP_STRING & SP_NULLABLE;
+
+/* TODO: care about the allocator signature */
+
+SignatureGen: KW_GENERATE '(' pluginName=Identifier ',' signatureName=Identifier ',' option=StringList ')';
+
+CellType: ('[' specs += CellTypeSpecifier (',' specs += CellTypeSpecifier)* ']')? KW_CELLTYPE name=Identifier '{'
+	('[' entrySpecs += CellTypeEntrySpecifier (',' entrySpecs += CellTypeEntrySpecifier)* ']')? KW_ENTRY entrySignature=Identifier entry=Identifier ';'
+	('[' cellTypeCallIsOptional ?= SP_OPTIONAL ']')? KW_CALL callSignature=Identifier call=Identifier ';'
+	KW_ATTR '{' (attributes += CellTypeAttribute ';')* '}' ';'
+	KW_VAR '{' (variables += CellTypeVariable ';')* '}' ';'
+	'}' ';';
+CellTypeSpecifier: sp_active ?= SP_ACTIVE |
+	KW_GENERATE '(' pluginName=Identifier ',' option=StringList ")" |
+	idx_is_id ?= SP_IDX_IS_ID |
+	singleton ?= SP_SINGLETON |
+	optional ?= SP_OPTIONAL |
+	SP_ALLOCATOR 
+	;
+CellTypeEntrySpecifier: SP_ALLOCATOR '(' /* TODO: */ ')';
+
+CellTypeAttribute: (specs += CellTypeAttributeSpecifier (',' specs += CellTypeAttributeSpecifier)*)?; /* TODO: */
+CellTypeAttributeSpecifier: SP_CHOICE '=' '{' choice += StringList (',' choice += StringList) '}';
+
+CellTypeVariable: (specs += CellTypeVariableSpecifier (',' specs += CellTypeVariableSpecifier)*)?; /* TODO: */
+CellTypeVariableSpecifier: SP_SIZE_IS;
+
+
+/* Expressions */
 BasicExpression returns Expr: Identifier | Boolean | Integer | Float | StringList | '(' Expression ')';
 Identifier: value=ID;
 Boolean: value=(KW_TRUE|KW_FALSE);
 Integer: value=(INT|HEX_CONSTANT|OCTAL_CONSTANT);
 Float: value=FLOATING_CONSTANT;
+AbString: value=AB_STRING_LITERAL;
 StringList: value=STRING;
 
 SuffixExpression returns Expr: BasicExpression (
@@ -44,7 +94,6 @@ terminal SHIFT_OPERATOR: '<<'|'>>';
 terminal LTGT_OPERATOR: '<'|'>'|'<='|'>=';
 terminal EQNE_OPERATOR: '=='|'!=';
 
-/*
 terminal KW_ATTR: 'attr';
 terminal KW_BOOL_T: 'bool_t';
 terminal KW_C_EXP: 'C_EXP';
@@ -65,10 +114,8 @@ terminal KW_ENUM64: 'enum64';
 terminal KW_ENUM8: 'enum8';
 terminal KW_FACTORY_L: 'factory';
 terminal KW_FACTROY_U: 'FACTORY';
-*/
 terminal KW_FALSE: 'false';
-/*
- * terminal KW_FLOAT32_T: 'float32_t';
+terminal KW_FLOAT32_T: 'float32_t';
 terminal KW_GENERATE: 'generate';
 terminal KW_IMPORT: 'import';
 terminal KW_IMPORT_C: 'import_C';
@@ -87,9 +134,7 @@ terminal KW_SHORT: 'short';
 terminal KW_SIGNATURE: 'signature';
 terminal KW_SIGNED: 'signed';
 terminal KW_STRUCT: 'struct';
-*/
 terminal KW_TRUE: 'true';
-/*
 terminal KW_TYPEDEF: 'typedef';
 terminal KW_UCHAR_T: 'uchar_t';
 terminal KW_UINT128_T: 'uint128_t';
@@ -135,7 +180,6 @@ terminal SP_STRING: 'string';
 terminal SP_THROUGH: 'through';
 terminal SP_TO_THROUGH: 'to_through';
 
-*/
 
 terminal ID: ('a'..'z'|'A'..'Z'|'_')('0'..'9'|'a'..'z'|'A'..'Z'|'_')*;
 
